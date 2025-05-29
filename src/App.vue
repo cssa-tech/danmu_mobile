@@ -15,8 +15,9 @@ export default {
     const showLimitWarning = ref(false);
 
     let socket;
-    let clientId = Date.now(); // 为当前客户端创建一个唯一 ID
+    let clientId = ref(''); // 为当前客户端创建一个唯一 ID
     onMounted(() => {
+      generateClientId();
       initializeWebSocket();
       checkAvatarAndNickname();
     });
@@ -26,6 +27,19 @@ export default {
         socket.close();
       }
     });
+    
+
+    function generateClientId() {
+      const storedId = localStorage.getItem('clientId');
+      if (storedId) {
+        clientId.value = storedId;
+      } else {
+        const newId = 'client_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+        clientId.value = newId;
+        localStorage.setItem('clientId', newId);
+      }
+    }
+
 
     function initializeWebSocket() {
       socket = new WebSocket('ws://10.2.12.248:8080'); // 替换为 WebSocket 服务器地址
@@ -89,8 +103,13 @@ export default {
         checkAvatarAndNickname();
         return;
       }
+      const danmu = {
+        nickName: nickName.value,
+        text: msg.value,
+        clientId: clientId.value,
+        timestamp: Date.now()
+      };
 
-      const danmu = { nickName: nickName.value, text: msg.value, clientId };
       if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify(danmu));
       }
