@@ -22,7 +22,9 @@ export default {
       checkAvatarAndNickname();
     });
 
+    let unmounted = false;
     onBeforeUnmount(() => {
+      unmounted = true;
       if (socket) {
         socket.close();
       }
@@ -42,21 +44,29 @@ export default {
 
 
     function initializeWebSocket() {
-      socket = new WebSocket('ws://10.2.12.248:8080'); // 替换为 WebSocket 服务器地址
+      // 后端地址：构建时可用 VITE_WS_URL 指定；默认连当前网站的 /ws，
+      // 由 nginx（线上）或 vite 开发服务器（本地）转发到后端的 8080 端口
+      const wsUrl = import.meta.env.VITE_WS_URL
+        || `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
+      socket = new WebSocket(wsUrl);
       socket.onopen = () => console.log('WebSocket 连接成功');
-      socket.onmessage = (event) => handleDanmuChange(JSON.parse(event.data));
+      socket.onmessage = (event) => {
+        try {
+          handleDanmuChange(JSON.parse(event.data));
+        } catch (e) {
+          console.error('弹幕数据格式错误:', e);
+        }
+      };
       socket.onerror = (error) => console.error('WebSocket 错误:', error);
-      socket.onclose = () => console.log('WebSocket 连接关闭');
       socket.onclose = () => {
-        console.log('WebSocket 连接关闭');
-        alert('连接已断开，请检查网络或刷新页面重试');
-        // 也可以选择在页面上显示一条消息，而不是使用 alert
-        // showConnectionStatus.value = true;
+        // 手机切到后台、网络波动都会断开，自动重连，不再弹窗打扰
+        console.log('WebSocket 连接关闭，2 秒后重连');
+        if (!unmounted) setTimeout(initializeWebSocket, 2000);
       };
     }
 
     function handleDanmuChange(newDanmu) {
-      if (newDanmu.clientId !== clientId) {
+      if (newDanmu.clientId !== clientId.value) {
         const updatedDanmuList = [...danmuList.value, newDanmu];
 
         if (updatedDanmuList.length > maxDanmuCount.value) {
@@ -110,9 +120,11 @@ export default {
         timestamp: Date.now()
       };
 
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify(danmu));
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        alert('正在连接服务器，请稍后再发送');
+        return;
       }
+      socket.send(JSON.stringify(danmu));
 
       // 更新本地弹幕列表
       danmuList.value.push(danmu);
@@ -209,7 +221,10 @@ export default {
 <style scoped>
 /* 设置最外层容器的背景图片 */
 .background-wrapper {
-  background-image: url('https://6461-danmu-6g41i88te98a9ba0-1313675025.tcb.qcloud.la/large_background.png?sign=46f72cca0749a37d1e907625ebdbd8cb&t=1730959823');
+  /* 原背景图存放在旧的腾讯云开发存储里，已无法访问，先用渐变色代替。
+     有了背景图后放到 public/background.png，再把下面这行换成
+     background-image: url('/background.png'); */
+  background-image: linear-gradient(160deg, #d9c6e6 0%, #b9cdea 100%);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
