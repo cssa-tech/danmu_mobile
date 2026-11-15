@@ -403,14 +403,19 @@ export default {
 }
 
 
+.danmu-item {
+  /* 和大屏幕一致：黑字，中文优先用各系统自带的黑体 */
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', 'Hiragino Sans GB', 'Source Han Sans SC', sans-serif;
+}
+
 .nickname {
-  font-weight: bold;
-  color: #333;
+  font-weight: 700;
+  color: #000;
   margin-right: 5px;
 }
 
 .message {
-  color: #333;
+  color: #000;
   word-break: break-word;
   white-space: normal;
 }
